@@ -1,0 +1,280 @@
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SUTERM · Menos es Más (Demo v2)</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { background:#f8fafc; }
+    .brand { font-weight:800; letter-spacing:.5px }
+    .pill { border-radius:999px; padding:.35rem .75rem; font-weight:600 }
+    .tab-btn.active { background:#c1121f; color:#fff; }
+    .tab-btn { background:#fff; border:1px solid #dee2e6; }
+    .card { border-radius:1rem }
+    .metric-grid { display:flex; flex-wrap:wrap; gap:.5rem }
+    .muted { color:#64748b }
+  </style>
+</head>
+<body>
+  <div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h1 class="brand m-0">MENOS <span class="text-danger">— es</span> <span class="text-success">+ MÁS</span></h1>
+        <div class="muted">Menos obesidad, más salud y mejor calidad de vida.</div>
+      </div>
+      <span class="pill bg-light border">Demo SUTERM · Sección 149</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="view-login" class="row justify-content-center">
+      <div class="col-lg-5">
+        <div class="card shadow-sm p-4">
+          <h5 class="mb-3">Iniciar sesión</h5>
+          <div class="alert alert-info py-2">
+            <strong>Usuarios demo:</strong><br>
+            Admin: <code>admin@suterm</code> / <code>1234</code><br>
+            Trabajador: <code>yrak@suterm</code> / <code>1234</code>
+          </div>
+          <form id="form-login" class="vstack gap-3">
+            <div>
+              <label class="form-label">Correo</label>
+              <input type="email" class="form-control" id="login-email" required>
+            </div>
+            <div>
+              <label class="form-label">Contraseña</label>
+              <input type="password" class="form-control" id="login-pass" required>
+            </div>
+            <button class="btn btn-danger">Entrar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- APP -->
+    <div id="view-app" class="d-none">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <h4 class="mb-0" id="greet"></h4>
+          <small class="muted" id="role-badge"></small>
+        </div>
+        <button id="btn-logout" class="btn btn-outline-secondary btn-sm">Cerrar sesión</button>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <!-- Formulario (admin) -->
+        <div class="col-lg-4">
+          <div class="card shadow-sm p-3">
+            <h6>Agregar medición</h6>
+            <form id="form-measure" class="vstack gap-2">
+              <input type="date" id="m-date" class="form-control" required>
+              <input type="number" step="0.1" id="m-peso" class="form-control" placeholder="Peso (kg)">
+              <input type="number" id="m-talla" class="form-control" placeholder="Talla (cm)">
+              <input type="number" step="0.1" id="m-grasa" class="form-control" placeholder="% Grasa">
+              <input type="number" id="m-fc" class="form-control" placeholder="FC (lpm)">
+              <input type="number" id="m-fr" class="form-control" placeholder="FR (rpm)">
+              <input type="number" id="m-pa-sys" class="form-control" placeholder="PA sistólica (mmHg)">
+              <input type="number" id="m-pa-dia" class="form-control" placeholder="PA diastólica (mmHg)">
+              <input type="number" id="m-glu" class="form-control" placeholder="Glucosa (mg/dL)">
+              <button class="btn btn-success mt-2">Guardar</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Gráficas + tabla -->
+        <div class="col-lg-8">
+          <div class="card shadow-sm p-3">
+            <div class="metric-grid">
+              <button class="btn tab-btn pill" data-metric="peso">Peso</button>
+              <button class="btn tab-btn pill" data-metric="talla">Talla</button>
+              <button class="btn tab-btn pill" data-metric="imc">IMC</button>
+              <button class="btn tab-btn pill" data-metric="grasa">% Grasa</button>
+              <button class="btn tab-btn pill" data-metric="fc">FC</button>
+              <button class="btn tab-btn pill" data-metric="fr">FR</button>
+              <button class="btn tab-btn pill" data-metric="pa">Presión arterial</button>
+              <button class="btn tab-btn pill" data-metric="glu">Glucosa</button>
+            </div>
+            <hr>
+            <h6 id="chart-title">Serie</h6>
+            <canvas id="chart" height="140"></canvas>
+          </div>
+
+          <div class="card shadow-sm p-3 mt-3">
+            <h6>Histórico</h6>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead><tr>
+                  <th>Fecha</th><th>Peso</th><th>Talla</th><th>IMC</th>
+                  <th>%Grasa</th><th>FC</th><th>FR</th><th>PA sys/dia</th><th>Glucosa</th>
+                </tr></thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div> <!-- row -->
+    </div> <!-- view-app -->
+  </div> <!-- container -->
+
+<script>
+/* ====== Datos demo y utilidades ====== */
+const demoUsers = [
+  { id:"u1", email:"admin@suterm", pass:"1234", role:"admin",  name:"Admin SUTERM" },
+  { id:"u2", email:"yrak@suterm",  pass:"1234", role:"worker", name:"Yrak Emilio" },
+];
+const storeKey = "suterm_menos_es_mas_v2";
+const todayISO = () => new Date().toISOString().slice(0,10);
+const calcIMC = (p,t) => (!p||!t) ? null : +(p/((t/100)**2)).toFixed(1);
+
+function loadDB(){
+  const raw = localStorage.getItem(storeKey);
+  if(raw) return JSON.parse(raw);
+  const db = {
+    users: demoUsers,
+    measures: [
+      {workerId:"u2",date:"2025-06-01",peso:100,talla:172,grasa:30,fc:78,fr:18,pa_sys:128,pa_dia:84,glu:102,imc:calcIMC(100,172)},
+      {workerId:"u2",date:"2025-07-01",peso: 98,talla:172,grasa:29,fc:74,fr:17,pa_sys:123,pa_dia:80,glu: 97,imc:calcIMC(98,172)},
+      {workerId:"u2",date:"2025-08-01",peso: 96,talla:172,grasa:28,fc:72,fr:16,pa_sys:119,pa_dia:78,glu: 92,imc:calcIMC(96,172)},
+    ]
+  };
+  localStorage.setItem(storeKey, JSON.stringify(db));
+  return db;
+}
+function saveDB(db){ localStorage.setItem(storeKey, JSON.stringify(db)); }
+
+let DB = loadDB();
+let SESSION = null;
+let CURRENT_METRIC = "peso";
+
+const $ = s => document.querySelector(s);
+
+/* ====== Login ====== */
+$("#form-login").addEventListener("submit", e=>{
+  e.preventDefault();
+  const email = $("#login-email").value.trim();
+  const pass  = $("#login-pass").value.trim();
+  const user = DB.users.find(u=>u.email===email && u.pass===pass);
+  if(!user){ alert("Credenciales inválidas. Usa las de la tarjeta azul."); return; }
+  SESSION = user;
+  $("#greet").textContent = `Hola, ${user.name}`;
+  $("#role-badge").textContent = user.role==="admin" ? "Rol: Administrador (captura y consulta)" : "Rol: Trabajador (solo consulta)";
+  $("#view-login").classList.add("d-none");
+  $("#view-app").classList.remove("d-none");
+  renderTable();
+  renderChart();
+});
+
+$("#btn-logout").addEventListener("click", ()=>{
+  SESSION=null;
+  $("#view-app").classList.add("d-none");
+  $("#view-login").classList.remove("d-none");
+});
+
+/* ====== Guardar medición (solo admin) ====== */
+$("#form-measure").addEventListener("submit", e=>{
+  e.preventDefault();
+  if(SESSION?.role!=="admin") return;
+  const peso = parseFloat($("#m-peso").value)||null;
+  const talla= parseFloat($("#m-talla").value)||null;
+  const rec = {
+    workerId: "u2", // demo
+    date: $("#m-date").value || todayISO(),
+    peso, talla,
+    imc: calcIMC(peso, talla),
+    grasa: parseFloat($("#m-grasa").value)||null,
+    fc:    parseFloat($("#m-fc").value)||null,
+    fr:    parseFloat($("#m-fr").value)||null,
+    pa_sys:parseFloat($("#m-pa-sys").value)||null,
+    pa_dia:parseFloat($("#m-pa-dia").value)||null,
+    glu:   parseFloat($("#m-glu").value)||null
+  };
+  DB.measures.push(rec);
+  saveDB(DB);
+  e.target.reset();
+  renderTable();
+  renderChart();
+});
+
+/* ====== Tabla ====== */
+function renderTable(){
+  const rows = DB.measures
+    .filter(m=>m.workerId==="u2")              // demo: un trabajador
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  $("#tbody").innerHTML = rows.map(m=>`
+    <tr>
+      <td>${m.date}</td>
+      <td>${val(m.peso)}</td>
+      <td>${val(m.talla)}</td>
+      <td>${val(m.imc)}</td>
+      <td>${val(m.grasa)}</td>
+      <td>${val(m.fc)}</td>
+      <td>${val(m.fr)}</td>
+      <td>${val(m.pa_sys)}/${val(m.pa_dia)}</td>
+      <td>${val(m.glu)}</td>
+    </tr>`).join("");
+}
+const val = v => (v===null||v===undefined||Number.isNaN(v)) ? "—" : v;
+
+/* ====== Gráfica ====== */
+let chart;
+function renderChart(){
+  const ctx = $("#chart").getContext("2d");
+  if(chart) chart.destroy();
+  const data = DB.measures
+    .filter(m=>m.workerId==="u2")
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const labels = data.map(d=>d.date);
+
+  // datasets por métrica
+  const metricTitle = {
+    peso:"Peso (kg)", talla:"Talla (cm)", imc:"IMC",
+    grasa:"% Grasa", fc:"Frecuencia cardiaca (lpm)",
+    fr:"Frecuencia respiratoria (rpm)",
+    pa:"Presión arterial (mmHg)",
+    glu:"Glucosa (mg/dL)"
+  };
+
+  let datasets;
+  if(CURRENT_METRIC==="pa"){
+    datasets = [
+      { label:"Sistólica", data:data.map(d=>d.pa_sys) },
+      { label:"Diastólica", data:data.map(d=>d.pa_dia) }
+    ];
+  } else {
+    datasets = [{ label: metricTitle[CURRENT_METRIC], data: data.map(d=>d[CURRENT_METRIC]) }];
+  }
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(ds=>({
+        label: ds.label,
+        data: ds.data,
+        tension: .3,
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: false
+      }))
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { x:{ grid:{ display:false } } }
+    }
+  });
+
+  document.querySelectorAll(".tab-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.metric===CURRENT_METRIC);
+  });
+}
+
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    CURRENT_METRIC = btn.dataset.metric;
+    renderChart();
+  });
+});
+</script>
+</body>
